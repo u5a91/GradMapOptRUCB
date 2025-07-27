@@ -23,6 +23,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.staticfiles import StaticFiles
+
+app.mount("/", StaticFiles(directory=".", html=True), name="static")
+
 # ============================================================================
 # 2) グローバル状態
 # ============================================================================
