@@ -55,98 +55,111 @@
   </div>
   <div id="status"></div>
 
-  <script>
-    const fileInput   = document.getElementById('fileInput');
-    const uploadBtn   = document.getElementById('uploadBtn');
-    const imgA        = document.getElementById('imgA');
-    const imgB        = document.getElementById('imgB');
-    const barA        = document.getElementById('barA');
-    const barB        = document.getElementById('barB');
-    const paletteA    = document.getElementById('paletteA');
-    const paletteB    = document.getElementById('paletteB');
-    const btnA        = document.getElementById('chooseA');
-    const btnB        = document.getElementById('chooseB');
-    const status      = document.getElementById('status');
-    const inputIter   = document.getElementById('inputIter');
-    const inputK      = document.getElementById('inputK');
+<script>
+  const fileInput   = document.getElementById('fileInput');
+  const uploadBtn   = document.getElementById('uploadBtn');
+  const imgA        = document.getElementById('imgA');
+  const imgB        = document.getElementById('imgB');
+  const barA        = document.getElementById('barA');
+  const barB        = document.getElementById('barB');
+  const paletteA    = document.getElementById('paletteA');
+  const paletteB    = document.getElementById('paletteB');
+  const btnA        = document.getElementById('chooseA');
+  const btnB        = document.getElementById('chooseB');
+  const status      = document.getElementById('status');
+  const inputIter   = document.getElementById('inputIter');
+  const inputK      = document.getElementById('inputK');
 
-    let totalIterations = 20;
+  let totalIterations = 20;
 
-    function formatRGB(arr) {
-      return `(${Math.round(arr[0]*255)}, ${Math.round(arr[1]*255)}, ${Math.round(arr[2]*255)})`;
+  function formatRGB(arr) {
+    return `(${Math.round(arr[0]*255)}, ${Math.round(arr[1]*255)}, ${Math.round(arr[2]*255)})`;
+  }
+
+  async function fetchNext() {
+    console.log('fetchNext() called, iteration limit =', totalIterations);
+    try {
+      const res = await fetch(`/palette/next/`);
+      console.log('fetchNext response status:', res.status);
+      if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+      const data = await res.json();
+      // Main images
+      imgA.src = data.A;
+      imgB.src = data.B;
+      // Gradient bars
+      barA.src = data.barA;
+      barB.src = data.barB;
+      // Palette lists
+      const pal = data.palette;
+      paletteA.textContent = pal.map((c,i) => `color ${i+1}: ${formatRGB(c)}`).join('\n');
+      paletteB.textContent = paletteA.textContent;
+      // Iteration info
+      status.textContent = `Iteration ${data.iteration} / ${data.total_iterations}`;
+      btnA.disabled = btnB.disabled = false;
+    } catch (err) {
+      console.error('Error in fetchNext:', err);
+      status.textContent = 'Error fetching next pair: ' + err.message;
     }
+  }
 
-    async function fetchNext() {
-      try {
-        const res = await fetch(`http://127.0.0.1:8000/palette/next/?n_iter=${totalIterations}`);
-        if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
-        const data = await res.json();
-        // Main images
-        imgA.src = data.A;
-        imgB.src = data.B;
-        // Gradient bars
-        barA.src = data.barA;
-        barB.src = data.barB;
-        // Palette lists
-        const pal = data.palette; // array of [ [r,g,b], ... ] sorted by lightness
-        paletteA.textContent = pal.map((c,i) => `color ${i+1}: ${formatRGB(c)}`).join('\n');
-        paletteB.textContent = paletteA.textContent;
-        // Iteration info
-        status.textContent = `Iteration ${data.iteration} / ${data.total_iterations}`;
-        btnA.disabled = btnB.disabled = false;
-      } catch (err) {
-        status.textContent = 'Error fetching next pair: ' + err.message;
-      }
-    }
-
-    async function sendChoice(choice) {
-      btnA.disabled = btnB.disabled = true;
-      try {
-        const res = await fetch('http://127.0.0.1:8000/palette/choice/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: `choice=${choice}`
-        });
-        if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
-        const data = await res.json();
-        if (data.next_iteration > totalIterations) {
-          status.textContent = 'Completed all iterations!';
-          btnA.disabled = btnB.disabled = true;
-        } else {
-          fetchNext();
-        }
-      } catch (err) {
-        status.textContent = 'Error sending choice: ' + err.message;
-      }
-    }
-
-    async function uploadImage() {
-      const file = fileInput.files[0];
-      if (!file) return alert('画像を選んでください');
-      totalIterations = parseInt(inputIter.value, 10) || 20;
-      const k = parseInt(inputK.value, 10) || 5;
-
-      const form = new FormData();
-      form.append('file', file);
-      form.append('n_iter', totalIterations);
-      form.append('k', k);
-
-      try {
-        const res = await fetch('http://127.0.0.1:8000/upload/', {
-          method: 'POST',
-          body: form
-        });
-        if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
-        status.textContent = 'Upload & reset successful! Fetching first pair…';
+  async function sendChoice(choice) {
+    console.log('sendChoice() called with choice =', choice);
+    btnA.disabled = btnB.disabled = true;
+    try {
+      const res = await fetch(`/palette/choice/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `choice=${choice}`
+      });
+      console.log('sendChoice response status:', res.status);
+      if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+      const data = await res.json();
+      console.log('sendChoice response JSON:', data);
+      if (data.next_iteration > totalIterations) {
+        status.textContent = 'Completed all iterations!';
+      } else {
         fetchNext();
-      } catch (err) {
-        status.textContent = 'Upload failed: ' + err.message;
       }
+    } catch (err) {
+      console.error('Error in sendChoice:', err);
+      status.textContent = 'Error sending choice: ' + err.message;
     }
+  }
 
-    uploadBtn.addEventListener('click', uploadImage);
-    btnA.addEventListener('click', () => sendChoice('A'));
-    btnB.addEventListener('click', () => sendChoice('B'));
-  </script>
-</body>
-</html>
+  async function uploadImage() {
+    console.log('uploadImage() called');
+    const file = fileInput.files[0];
+    if (!file) {
+      console.warn('No file selected');
+      return alert('画像を選んでください');
+    }
+    totalIterations = parseInt(inputIter.value, 10) || 20;
+    const k = parseInt(inputK.value, 10) || 5;
+
+    const form = new FormData();
+    form.append('file', file);
+    form.append('n_iter', totalIterations);
+    form.append('k', k);
+    console.log('FormData entries:', [...form.entries()]);
+
+    try {
+      const res = await fetch(`/upload/`, {
+        method: 'POST',
+        body: form
+      });
+      console.log('upload response status:', res.status);
+      if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+      const data = await res.json();
+      console.log('upload JSON:', data);
+      status.textContent = 'Upload & reset successful! Fetching first pair…';
+      fetchNext();
+    } catch (err) {
+      console.error('Error in uploadImage:', err);
+      status.textContent = 'Upload failed: ' + err.message;
+    }
+  }
+
+  uploadBtn.addEventListener('click', uploadImage);
+  btnA.addEventListener('click', () => sendChoice('A'));
+  btnB.addEventListener('click', () => sendChoice('B'));
+</script>

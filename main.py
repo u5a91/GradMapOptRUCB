@@ -25,7 +25,14 @@ app.add_middleware(
 
 from fastapi.staticfiles import StaticFiles
 
-app.mount("/", StaticFiles(directory=".", html=True), name="static")
+app.mount("/static", StaticFiles(directory=".", html=True), name="static")
+
+from fastapi.responses import FileResponse
+
+# ─── ルートアクセスで index.html を返す ───
+@app.get("/", include_in_schema=False)
+async def root():
+    return FileResponse("index.html")
 
 # ============================================================================
 # 2) グローバル状態
