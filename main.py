@@ -207,4 +207,7 @@ def record_choice(choice: str = Form(...)):
 # 5) サーバ起動
 # ============================================================================
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+    # Render が割り当てたポートを参照（なければローカル用の8000）
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
