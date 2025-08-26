@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gradient Mapping Optimization RUCB</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
   <h1>Color Gradient RUCB Demo</h1>
@@ -84,7 +84,7 @@
   async function fetchNext() {
     console.log('fetchNext() called, iteration limit =', totalIterations);
     try {
-      const res = await fetch(`/palette/next/`);
+      const res = await fetch(`palette/next/`);
       console.log('fetchNext response status:', res.status);
       if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
       const data = await res.json();
@@ -112,7 +112,7 @@
     console.log('sendChoice() called with choice =', choice);
     btnA.disabled = btnB.disabled = true;
     try {
-      const res = await fetch(`/palette/choice/`, {
+      const res = await fetch(`palette/choice/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `choice=${choice}`
@@ -149,7 +149,7 @@
     console.log('FormData entries:', [...form.entries()]);
 
     try {
-      const res = await fetch(`/upload/`, {
+      const res = await fetch(`upload/`, {
         method: 'POST',
         body: form
       });
