@@ -3,52 +3,57 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Color Gradient RUCB Demo</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 640px; margin: 2rem auto; }
-    #config, #uploadSection { margin-bottom: 1rem; }
-    #images { display: flex; justify-content: space-between; margin-bottom: 1rem; }
-    .image-block { width: 48%; }
-    .image-block img.main { width: 100%; border: 1px solid #ccc; }
-    .image-block img.bar  { width: 100%; height: 20px; display: block; margin-top: 0.5rem; }
-    .image-block pre     { background: #f4f4f4; padding: 0.5rem; font-size: 0.9rem; margin-top: 0.5rem; }
-    #controls { text-align: center; margin-top: 1rem; }
-    button { padding: 0.5rem 1rem; margin: 0 0.5rem; font-size: 1rem; }
-    #status { margin-top: 1rem; }
-    label { margin-right: 0.5rem; }
-    input[type=number] { width: 4rem; margin-right: 1rem; }
-  </style>
+  <title>Gradient Mapping Optimization RUCB</title>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <h1>Color Gradient RUCB Demo</h1>
 
-  <!-- 設定 -->
+  <!-- Setup -->
   <div id="config">
     <label>Iterations: <input type="number" id="inputIter" value="20" min="1"></label>
     <label>Colors: <input type="number" id="inputK" value="5" min="2"></label>
   </div>
 
-  <!-- アップロード -->
+  <!-- Upload -->
   <div id="uploadSection">
     <input type="file" id="fileInput" accept="image/*">
     <button id="uploadBtn">Upload Image</button>
   </div>
 
-  <!-- 画像ペア -->
+  <!-- Pair -->
   <div id="images">
     <div class="image-block">
-      <img id="imgA" class="main" src="" alt="Option A">
-      <img id="barA" class="bar" src="" alt="Gradient A">
+      <img
+        id="imgA"
+        class="main"
+        src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+        alt="Option A"
+      />
+      <img
+        id="barA"
+        class="bar"
+        src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+        alt="Gradient A"
+      />
       <pre id="paletteA"></pre>
     </div>
     <div class="image-block">
-      <img id="imgB" class="main" src="" alt="Option B">
-      <img id="barB" class="bar" src="" alt="Gradient B">
+      <img id="imgB" 
+        class="main"
+        src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+        alt="Option B"
+      />
+      <img id="barB" 
+        class="bar"
+        src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+        alt="Gradient B"
+        />
       <pre id="paletteB"></pre>
     </div>
   </div>
 
-  <!-- 選択ボタン -->
+  <!-- Choice -->
   <div id="controls">
     <button id="chooseA" disabled>Choose A</button>
     <button id="chooseB" disabled>Choose B</button>
@@ -90,9 +95,10 @@
       barA.src = data.barA;
       barB.src = data.barB;
       // Palette lists
-      const pal = data.palette;
-      paletteA.textContent = pal.map((c,i) => `color ${i+1}: ${formatRGB(c)}`).join('\n');
-      paletteB.textContent = paletteA.textContent;
+      const palA = data.palA;
+      const palB = data.palB;
+      paletteA.textContent = palA.map((c,i) => `color ${i+1}: ${formatRGB(c)}`).join('\n');
+      paletteB.textContent = palB.map((c,i) => `color ${i+1}: ${formatRGB(c)}`).join('\n');
       // Iteration info
       status.textContent = `Iteration ${data.iteration} / ${data.total_iterations}`;
       btnA.disabled = btnB.disabled = false;
@@ -131,15 +137,15 @@
     const file = fileInput.files[0];
     if (!file) {
       console.warn('No file selected');
-      return alert('画像を選んでください');
+      return alert('画像を選んでください / No file selected');
     }
     totalIterations = parseInt(inputIter.value, 10) || 20;
     const k = parseInt(inputK.value, 10) || 5;
 
     const form = new FormData();
     form.append('file', file);
-    form.append('n_iter', totalIterations);
-    form.append('k', k);
+    form.append('n_iter_form', totalIterations);
+    form.append('k_form', k);
     console.log('FormData entries:', [...form.entries()]);
 
     try {
@@ -163,3 +169,5 @@
   btnA.addEventListener('click', () => sendChoice('A'));
   btnB.addEventListener('click', () => sendChoice('B'));
 </script>
+</body>
+</html>
