@@ -4,3 +4,5 @@
 こちらから遊べます(すこし時間がかかります) : https://gradmapoptrucb.onrender.com/
 
 **注意 : Render 上だとあまりファイルサイズの大きいものは扱えません. 800 × 800 px 以内に収まるものが望ましいです.**
+
+usagi
