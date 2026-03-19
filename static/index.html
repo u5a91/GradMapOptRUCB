@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gradient Mapping Optimization RUCB</title>
-  <link rel="stylesheet" href="static/style.css">
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <h1>Color Gradient RUCB Demo</h1>
@@ -75,19 +75,24 @@
   const inputIter   = document.getElementById('inputIter');
   const inputK      = document.getElementById('inputK');
 
+  let sessionId = null;
   let totalIterations = 20;
 
-  function formatRGB(arr) {
-    return `(${Math.round(arr[0]*255)}, ${Math.round(arr[1]*255)}, ${Math.round(arr[2]*255)})`;
+  function formatHLS(arr) {
+    return `(${Math.round(arr[0] * 100)}%, ${Math.round(arr[1] * 100)}%, ${Math.round(arr[2] * 100)}%)`;
   }
 
   async function fetchNext() {
-    console.log('fetchNext() called, iteration limit =', totalIterations);
+    if (!sessionId) {
+      status.textContent = 'Please upload an image first.';
+      return;
+    }
+    
     try {
-      const res = await fetch(`palette/next/`);
-      console.log('fetchNext response status:', res.status);
+      const res = await fetch(`/palette/next/?session_id=${encodeURIComponent(sessionId)}`)
       if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
       const data = await res.json();
+
       // Main images
       imgA.src = data.A;
       imgB.src = data.B;
@@ -97,8 +102,8 @@
       // Palette lists
       const palA = data.palA;
       const palB = data.palB;
-      paletteA.textContent = palA.map((c,i) => `color ${i+1}: ${formatRGB(c)}`).join('\n');
-      paletteB.textContent = palB.map((c,i) => `color ${i+1}: ${formatRGB(c)}`).join('\n');
+      paletteA.textContent = palA.map((c,i) => `color ${i+1} (HLS): ${formatHLS(c)}`).join('\n');
+      paletteB.textContent = palB.map((c,i) => `color ${i+1} (HLS): ${formatHLS(c)}`).join('\n');
       // Iteration info
       status.textContent = `Iteration ${data.iteration} / ${data.total_iterations}`;
       btnA.disabled = btnB.disabled = false;
@@ -109,22 +114,32 @@
   }
 
   async function sendChoice(choice) {
-    console.log('sendChoice() called with choice =', choice);
+    if (!sessionId) {
+      status.textContent = 'Please upload an image first.';
+      return;
+    }
+
     btnA.disabled = btnB.disabled = true;
+  
     try {
-      const res = await fetch(`palette/choice/`, {
+      const body = new URLSearchParams({
+        session_id: sessionId,
+        choice: choice,
+      })
+
+      const res = await fetch(`/palette/choice/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `choice=${choice}`
+        body: body.toString(),
       });
-      console.log('sendChoice response status:', res.status);
+
       if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
       const data = await res.json();
-      console.log('sendChoice response JSON:', data);
+
       if (data.next_iteration > totalIterations) {
         status.textContent = 'Completed all iterations!';
       } else {
-        fetchNext();
+        await fetchNext();
       }
     } catch (err) {
       console.error('Error in sendChoice:', err);
@@ -133,7 +148,6 @@
   }
 
   async function uploadImage() {
-    console.log('uploadImage() called');
     const file = fileInput.files[0];
     if (!file) {
       console.warn('No file selected');
@@ -146,19 +160,21 @@
     form.append('file', file);
     form.append('n_iter_form', totalIterations);
     form.append('k_form', k);
-    console.log('FormData entries:', [...form.entries()]);
+
+    btnA.disabled = true;
+    btnB.disabled = true;
+    status.textContent = 'Uploading image...';
 
     try {
-      const res = await fetch(`upload/`, {
+      const res = await fetch(`/upload/`, {
         method: 'POST',
         body: form
       });
-      console.log('upload response status:', res.status);
       if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
       const data = await res.json();
-      console.log('upload JSON:', data);
+      sessionId = data.session_id;
       status.textContent = 'Upload & reset successful! Fetching first pair…';
-      fetchNext();
+      await fetchNext();
     } catch (err) {
       console.error('Error in uploadImage:', err);
       status.textContent = 'Upload failed: ' + err.message;
