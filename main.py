@@ -10,7 +10,10 @@ import colorsys
 import base64
 import os
 import uuid
+import time
 from dataclasses import dataclass, field
+
+SESSION_TTL_SECONDS = 30 * 60  # 30 minutes
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
 MAX_IMAGE_WIDTH = 4096
@@ -50,8 +53,20 @@ class SessionState:
     plays: dict = field(default_factory=dict)
     wins: dict = field(default_factory=dict)
     curr_iteration: int = 1
+    created_at: float = field(default_factory=time.time)
+    last_accessed: float = field(default_factory=time.time)
 
 sessions: dict[str, SessionState] = {}
+
+def cleanup_expired_sessions() -> None:
+    now = time.time()
+    expired_ids = [
+        session_id
+        for session_id, state in sessions.items()
+        if now - state.last_accessed > SESSION_TTL_SECONDS
+    ]
+    for session_id in expired_ids:
+        del sessions[session_id]
 
 def rgb_array_to_base64(arr: np.ndarray) -> str:
     img = Image.fromarray((arr * 255).astype(np.uint8))
@@ -155,12 +170,16 @@ def select_challenger_local(
     return best
 
 def get_session_or_404(session_id: str) -> SessionState:
+    cleanup_expired_sessions()
     state = sessions.get(session_id)
+
     if state is None:
         raise HTTPException(
             status_code=404,
             detail="Invalid session_id. Please upload an image first.",
         )
+
+    state.last_accessed = time.time()
     return state
 
 @app.post("/upload/")
@@ -169,6 +188,7 @@ async def upload_image(
     n_iter_form: int = Form(20),
     k_form: int = Form(5),
 ):
+    cleanup_expired_sessions()
     if not (1 <= n_iter_form <= 100):
         raise HTTPException(
             status_code=400,
