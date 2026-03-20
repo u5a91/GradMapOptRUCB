@@ -79,7 +79,10 @@
   let totalIterations = 20;
 
   function formatHLS(arr) {
-    return `(${Math.round(arr[0] * 100)}%, ${Math.round(arr[1] * 100)}%, ${Math.round(arr[2] * 100)}%)`;
+    const h = Math.round(arr[0] * 360);
+    const l = Math.round(arr[1] * 100);
+    const s = Math.round(arr[2] * 100);
+    return `(${h}°, ${l}%, ${s}%)`;
   }
 
   async function fetchNext() {

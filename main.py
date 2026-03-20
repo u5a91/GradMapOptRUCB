@@ -12,6 +12,9 @@ import os
 import uuid
 from dataclasses import dataclass, field
 
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
+MAX_IMAGE_WIDTH = 4096
+MAX_IMAGE_HEIGHT = 4096
 
 ROOT_PATH = os.environ.get("ROOT_PATH", "")
 
@@ -88,22 +91,22 @@ def make_grad_bar_mixed(hls_pts: np.ndarray, width=300, height=20) -> np.ndarray
     bar = (1 - t)[:, None] * c0 + t[:, None] * c1
     return np.tile(bar[None, :, :], (height, 1, 1))
 
-def palette_id(hls_pts: np.ndarray) -> tuple:
-    return tuple(map(tuple, sort_by_lightness(hls_pts)))
+def palette_id(hls_pts: np.ndarray, ndigits: int = 3) -> tuple:
+    arr = np.round(sort_by_lightness(hls_pts), ndigits).tolist()
+    return tuple(tuple(row) for row in arr)
 
 def record_duel(
     plays: dict, 
     wins: dict, 
-    i: tuple,
-    j: tuple,
-    winner: tuple
+    winner_id: tuple,
+    loser_id: tuple,
 ):  
-    key = (i, j) if winner == i else (j, i)
-    wins.setdefault(key, 0)
+    i, j = winner_id, loser_id
+    wins.setdefault((i, j), 0)
     plays.setdefault((i, j), 0)
     plays.setdefault((j, i), 0)
 
-    wins[key] += 1
+    wins[(i, j)] += 1
     plays[(i, j)] += 1
     plays[(j, i)] += 1
 
@@ -166,9 +169,30 @@ async def upload_image(
     n_iter_form: int = Form(20),
     k_form: int = Form(5),
 ):
+    if not (1 <= n_iter_form <= 100):
+        raise HTTPException(
+            status_code=400,
+            detail="n_iter must be between 1 and 100",
+        )
+
+    if not (2 <= k_form <= 10):
+        raise HTTPException(
+            status_code=400,
+            detail="k must be between 2 and 10",
+        )
+
     data = await file.read()
+
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size is {MAX_UPLOAD_BYTES // (1024 * 1024)} MB",
+        )
+
     try:
-        img = Image.open(io.BytesIO(data)).convert("RGB")
+        img = Image.open(io.BytesIO(data))
+        img.load()
+        img = img.convert("RGB")
     except UnidentifiedImageError as e:
         raise HTTPException(
             status_code=400,
@@ -179,6 +203,16 @@ async def upload_image(
             status_code=400,
             detail="Failed to load image: corrupted image data",
         ) from e
+
+    width, height = img.size
+    if width > MAX_IMAGE_WIDTH or height > MAX_IMAGE_HEIGHT:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Image too large. Maximum resolution is "
+                f"{MAX_IMAGE_WIDTH}x{MAX_IMAGE_HEIGHT}"
+            ),
+        )
 
     arr = np.asarray(img) / 255.0
     gray = np.dot(arr[..., :3], [0.2989, 0.5870, 0.1140])
@@ -267,7 +301,6 @@ def record_choice(
         state.wins,
         winner_id,
         loser_id,
-        winner=winner_id,
     )
 
     state.curr_iteration += 1
