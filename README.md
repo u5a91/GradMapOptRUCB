@@ -1,8 +1,7 @@
-# Gradient Mapping Optimization RUCB
+# Gradient Mapping Optimization
 
-比較バンディット問題に対する RUCB というアルゴリズムを用いてグラデーションマップを逐次的に最適化していく Web アプリです. 実装には FastAPI を用いています.
+ベイズ最適化を用いてグラデーションマップを逐次的に最適化していく Web アプリです. BoTorch, FastAPI を用いています.
 
-こちらからも遊べます(すこし時間がかかります) : https://gradmapoptrucb.onrender.com/
 
 ## Overview
 このアプリでは, アップロードされた画像をまずグレースケール化し, その明度に応じて HSL パレットから色を割り当てます.
@@ -17,7 +16,6 @@
 
 ## Features
 - HSL 空間での線形補間, 明度昇順ソート
-- 既存 RUCB へのガウシアンノイズ減衰の導入
 
 ## Algorithm
 Coming soon.
