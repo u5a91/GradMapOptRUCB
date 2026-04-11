@@ -1,5 +1,4 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import uvicorn
@@ -34,12 +33,6 @@ app = FastAPI(
     root_path=ROOT_PATH,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 app.mount(
     "/static",
@@ -356,24 +349,3 @@ if __name__ == "__main__":
     host = os.environ.get("HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host=host, port=port)
-
-
-"""
-@app.get("/items/{item_id}")
-def read_item(
-    item_id: int,
-    q: str | None = Query(None),
-):
-    if item_id < 0:
-        raise HTTPException(400, "Invalid item_id")
-    return {"item_id": item_id, "q": q}
-
-@app.post("/upload/")
-async def upload_file(
-    file: UploadFile = File(...),
-    count: int = Form(1),
-):
-    data = await file.read()
-    return {"filename": file.filename, "size": len(data), "count": count}
-
-"""

@@ -27,13 +27,11 @@
       <img
         id="imgA"
         class="main"
-        src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
         alt="Option A"
       />
       <img
         id="barA"
         class="bar"
-        src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
         alt="Gradient A"
       />
       <pre id="paletteA"></pre>
@@ -41,12 +39,10 @@
     <div class="image-block">
       <img id="imgB" 
         class="main"
-        src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
         alt="Option B"
       />
       <img id="barB" 
         class="bar"
-        src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
         alt="Gradient B"
         />
       <pre id="paletteB"></pre>
@@ -61,6 +57,9 @@
   <div id="status"></div>
 
 <script>
+  // 画像未設定時に使う透明 GIF
+  const EMPTY_IMG =
+  "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
   const fileInput   = document.getElementById('fileInput');
   const uploadBtn   = document.getElementById('uploadBtn');
   const imgA        = document.getElementById('imgA');
@@ -77,6 +76,13 @@
 
   let sessionId = null;
   let totalIterations = 20;
+
+  function resetImages() {
+    imgA.src = EMPTY_IMG;
+    imgB.src = EMPTY_IMG;
+    barA.src = EMPTY_IMG;
+    barB.src = EMPTY_IMG;
+  }
 
   function formatHLS(arr) {
     const h = Math.round(arr[0] * 360);
@@ -184,6 +190,7 @@
     }
   }
 
+  resetImages();
   uploadBtn.addEventListener('click', uploadImage);
   btnA.addEventListener('click', () => sendChoice('A'));
   btnB.addEventListener('click', () => sendChoice('B'));
