@@ -83,10 +83,9 @@ def cleanup_expired_sessions() -> None:
 
 def rgb_array_to_base64(arr: np.ndarray) -> str:
     img = Image.fromarray((arr * 255).astype(np.uint8))
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG")
-    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
-
+    with io.BytesIO() as buf:
+        img.save(buf, format="PNG")
+        return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 def sort_by_lightness(hls_pts: np.ndarray) -> np.ndarray:
     return hls_pts[np.argsort(hls_pts[:, 1])]
@@ -243,7 +242,7 @@ async def upload_image(
     arr = np.asarray(img) / 255.0
     gray = np.dot(arr[..., :3], [0.2989, 0.5870, 0.1140])
 
-    dim = 3 * k_form
+    dim = 3 * k_form    # d = 3 * k
     x0 = torch.stack(
         [canonicalize_x(x, k_form) for x in torch.rand(2, dim, dtype=torch.double)]
     )
