@@ -4,7 +4,7 @@
 
 
 ## Overview
-このアプリでは, アップロードされた画像をまずグレースケール化し, その明度に応じて HSL パレットから色を割り当てます.
+このアプリでは, アップロードされた画像をまずグレースケール化し, その明度に応じて HLS パレットから色を割り当てます.
 処理の流れは次の通りです.
 
 1. グラデーションマップを設定したい画像をアップロードする
@@ -16,8 +16,9 @@
 
 
 ## Features
-- HSL 空間での線形補間, 明度昇順ソート
-
+- HLS 空間での線形補間, 明度昇順ソート
+- Pairwise GP によるフィードバックの反映, Expected Utility of Best Option (EUBO) による候補の提案  
+- H 成分の周期性を表す PeriodicKernel と、L/S 成分に対する RBFKernel を組み合わせたカスタムカーネル
 
 ## Requirements
 - Python 3.12
@@ -59,5 +60,8 @@
     ```
 
 
-## Algorithm
-Coming soon.
+## Resources
+- BoTorch tutorial on preference-based Bayesian optimization  
+  https://botorch.org/docs/tutorials/preference_bo/
+- GPyTorch kernel documentation  
+  https://docs.gpytorch.ai/en/stable/kernels.html
