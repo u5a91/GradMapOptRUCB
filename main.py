@@ -66,11 +66,27 @@ sessions: dict[str, SessionState] = {}
 
 
 def x_to_palette(x: torch.Tensor, k: int) -> np.ndarray:
+    """
+    shape (3 * k,) のテンソルをグラデーションマップの基本色 (パレット) の RGB 配列に変換する
+
+    Args:
+        x (torch.Tensor): shape (3 * k,) のテンソル
+        k (int): グラデーションマップの基本色の数
+
+    Returns:
+        np.ndarray: shape (k, 3) の RGB 配列
+    """
     arr = x.detach().cpu().numpy().reshape(k, 3)
     return np.clip(arr, 0.0, 1.0)
 
 
 def cleanup_expired_sessions() -> None:
+    """
+    期限切れのセッションを削除する
+
+    Returns:
+        None: 期限切れセッションを sessions から削除
+    """
     now = time.time()
     expired_ids = [
         session_id
@@ -82,20 +98,57 @@ def cleanup_expired_sessions() -> None:
 
 
 def rgb_array_to_base64(arr: np.ndarray) -> str:
+    """
+    RGB 配列を PNG 形式の base64 エンコードし、URI として返す
+
+    Args:
+        arr (np.ndarray): 画像を表す shape (H, W, 3) の RGB 配列
+    
+    Returns:
+        str: base 64 エンコードされた PNG 画像の URI
+    """
     img = Image.fromarray((arr * 255).astype(np.uint8))
     with io.BytesIO() as buf:
         img.save(buf, format="PNG")
         return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 def sort_by_lightness(hls_pts: np.ndarray) -> np.ndarray:
+    """
+    HLS 配列 (パレット) を明度の昇順にソートする
+
+    Args:
+        hls_pts (np.ndarray): shape (k, 3) の HLS 配列
+
+    Returns:
+        np.ndarray: 明度の昇順にソートされた HLS 配列
+    """
     return hls_pts[np.argsort(hls_pts[:, 1])]
 
 
 def hls2rgb_array(hls_pts: np.ndarray) -> np.ndarray:
+    """
+    HLS 配列を RGB 配列に変換する
+
+    Args:
+        hls_pts (np.ndarray): shape (k, 3) の HLS 配列
+    
+    Returns:
+        np.ndarray: shape (k, 3) の RGB 配列
+    """
     return np.array([colorsys.hls_to_rgb(h, l, s) for h, l, s in hls_pts])
 
 
 def apply_gradient_mixed(gray: np.ndarray, hls_pts: np.ndarray) -> np.ndarray:
+    """
+    グレースケール画像に対して線形補間に基づくグラデーションマップを適用する
+
+    Args:
+        gray (np.ndarray): shape (H, W) のグレースケール画像
+        hls_pts (np.ndarray): shape (k, 3) の HLS 配列
+
+    Returns:
+        np.ndarray: shape (H, W, 3) の RGB 画像
+    """
     h, w = gray.shape
     k = len(hls_pts)
     hls_sorted = sort_by_lightness(hls_pts)
@@ -110,19 +163,43 @@ def apply_gradient_mixed(gray: np.ndarray, hls_pts: np.ndarray) -> np.ndarray:
 
 
 def make_grad_bar_mixed(hls_pts: np.ndarray, width=300, height=20) -> np.ndarray:
+    """
+    パレットに対応するグラデーションバーの画像を生成する
+
+    Args:
+        hls_pts (np.ndarray): shape (k, 3) の HLS 配列
+        width (int): グラデーションバーの幅
+        height (int): グラデーションバーの高さ
+    
+    Returns:
+        np.ndarray: shape (height, width, 3) の RGB 画像
+    """
     k = len(hls_pts)
     hls_sorted = sort_by_lightness(hls_pts)
     rgb = hls2rgb_array(hls_sorted)
-    xs = np.linspace(0, 1, width)
-    seg = np.minimum((xs * (k - 1)).astype(int), k - 2)
-    t = xs * (k - 1) - seg
-    c0 = rgb[seg]
-    c1 = rgb[seg + 1]
-    bar = (1 - t)[:, None] * c0 + t[:, None] * c1
+
+    positions = np.linspace(0, 1, width)
+    x = positions * (k - 1)
+    idx = np.minimum(x.astype(int), k - 2)
+    dx = x - idx
+
+    left_colors = rgb[idx]
+    right_colors = rgb[idx + 1]
+    bar = (1 - dx)[:, None] * left_colors + dx[:, None] * right_colors
+
     return np.tile(bar[None, :, :], (height, 1, 1))
 
 
 def get_session_or_404(session_id: str) -> SessionState:
+    """
+        セッション ID からセッション状態を取得する
+
+    Args:
+        session_id (str): セッション ID
+    
+    Returns:
+        SessionState: セッション状態
+    """
     cleanup_expired_sessions()
     state = sessions.get(session_id)
 
@@ -143,6 +220,20 @@ def propose_challenger_eubo(
     num_restarts: int = 8,
     raw_samples: int = 128,
 ) -> torch.Tensor:
+    """
+    現在の最適候補 (incumbent) に対して
+    Expected Utility of Best Option (EUBO) による相手候補を提案する
+
+    Args:
+        model (PairwiseGP): 選好ベース GP モデル
+        incumbent (torch.Tensor): 現在の最適候補
+        dim (int): 探索空間の次元
+        num_restarts (int): 実際に局所探索を行う点数
+        raw_samples (int): 初期サンプリング点数
+
+    Returns:
+        torch.Tensor: shape (dim,) の相手候補
+    """
     bounds = torch.stack(
         [
             torch.zeros(dim, dtype=torch.double),
@@ -163,7 +254,7 @@ def propose_challenger_eubo(
     X_next, _ = optimize_acqf(
         acq_function=acq_wrapper,
         bounds=bounds,
-        q=1,
+        q=1,    # 提案する (相手) 候補点数は 1
         num_restarts=num_restarts,
         raw_samples=raw_samples,
     )
@@ -171,6 +262,16 @@ def propose_challenger_eubo(
 
 
 def fit_pref_model(X: torch.Tensor, comps: torch.Tensor) -> PairwiseGP:
+    """
+    比較結果から選好 GP モデルをフィットする
+
+    Args:
+        X (torch.Tensor): shape (n, d) の候補点集合
+        comps (torch.Tensor): shape (m, 2) の比較結果
+
+    Returns:
+        PairwiseGP: フィットされた選好 GP モデル
+    """
     model = PairwiseGP(
         X,
         comps,
@@ -182,6 +283,16 @@ def fit_pref_model(X: torch.Tensor, comps: torch.Tensor) -> PairwiseGP:
 
 
 def canonicalize_x(x: torch.Tensor, k: int) -> torch.Tensor:
+    """
+    HSL テンソルを明度順ソートし [0, 1] にクリップして正規化
+
+    Args:
+        x (torch.Tensor): shape (3 * k,) の HSL テンソル
+        k (int): パレットの色数
+
+    Returns:
+        torch.Tensor: 正規化された HSL テンソル
+    """
     pal = x.detach().cpu().numpy().reshape(k, 3)
     pal = sort_by_lightness(np.clip(pal, 0.0, 1.0))
     return torch.tensor(pal.reshape(-1), dtype=torch.double, device=x.device)
@@ -240,7 +351,8 @@ async def upload_image(
         )
 
     arr = np.asarray(img) / 255.0
-    gray = np.dot(arr[..., :3], [0.2989, 0.5870, 0.1140])
+    # RGB をグレースケールに変換 (ITU-R BT.601)
+    gray = np.dot(arr[..., :3], [0.2989, 0.5870, 0.1140])   # (H, W)
 
     dim = 3 * k_form    # d = 3 * k
     x0 = torch.stack(
