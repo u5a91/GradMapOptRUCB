@@ -19,6 +19,7 @@ from botorch.models.pairwise_gp import PairwiseGP, PairwiseLaplaceMarginalLogLik
 from botorch.models.transforms.input import Normalize
 from botorch.acquisition.preference import AnalyticExpectedUtilityOfBestOption
 from botorch.optim import optimize_acqf
+from gpytorch.kernels import ScaleKernel, RBFKernel, PeriodicKernel, AdditiveKernel
 
 SESSION_TTL_SECONDS = 30 * 60  # 30 minutes
 
@@ -261,13 +262,39 @@ def propose_challenger_eubo(
     return X_next.squeeze(0)  # shape: (d,)
 
 
-def fit_pref_model(X: torch.Tensor, comps: torch.Tensor) -> PairwiseGP:
+def build_hls_kernel(k: int) -> ScaleKernel:
+    """
+    HLS 空間上の候補点に対する共分散カーネルを構築する
+    入力テンソルに対し
+    H には周期性を反映する PeriodicKernel を
+    L/S には標準の RBFKernel をそれぞれ適用し
+    それらを AdditiveKernel で足し合わせたうえで
+    ScaleKernel により全体をスケーリングする
+
+    Args:
+        k (int): パレットの色数
+
+    Returns:
+        ScaleKernel: 構築した HLS 用カーネル
+    """
+
+    hue_dims = list(range(0, 3 * k, 3))
+    ls_dims = [i for i in range(3 * k) if i not in hue_dims]
+
+    hue_kernel = PeriodicKernel(active_dims=hue_dims, ard_num_dims=len(hue_dims))
+    ls_kernel = RBFKernel(active_dims=ls_dims, ard_num_dims=len(ls_dims))
+
+    return ScaleKernel(AdditiveKernel(hue_kernel, ls_kernel))
+
+
+def fit_pref_model(X: torch.Tensor, comps: torch.Tensor, k: int) -> PairwiseGP:
     """
     比較結果から選好 GP モデルをフィットする
 
     Args:
         X (torch.Tensor): shape (n, d) の候補点集合
         comps (torch.Tensor): shape (m, 2) の比較結果
+        k (int): パレットの色数
 
     Returns:
         PairwiseGP: フィットされた選好 GP モデル
@@ -275,12 +302,12 @@ def fit_pref_model(X: torch.Tensor, comps: torch.Tensor) -> PairwiseGP:
     model = PairwiseGP(
         X,
         comps,
+        covar_module=build_hls_kernel(k),
         input_transform=Normalize(d=X.shape[-1]),
     )
     mll = PairwiseLaplaceMarginalLogLikelihood(model.likelihood, model)
     fit_gpytorch_mll(mll)
     return model
-
 
 def canonicalize_x(x: torch.Tensor, k: int) -> torch.Tensor:
     """
@@ -437,7 +464,7 @@ def record_choice(
     state.curr_iteration += 1
 
     if state.curr_iteration <= state.n_iter:
-        model = fit_pref_model(state.X, state.comps)
+        model = fit_pref_model(state.X, state.comps, state.k)
 
         challenger = propose_challenger_eubo(
             model=model,
