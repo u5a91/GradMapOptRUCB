@@ -79,14 +79,14 @@ sessions: dict[str, SessionState] = {}
 
 def x_to_palette(x: torch.Tensor, k: int) -> np.ndarray:
     """
-    shape (3 * k,) のテンソルをグラデーションマップの基本色 (パレット) の RGB 配列に変換する
+    shape (3 * k,) のテンソルをグラデーションマップの基本色 (パレット) の配列に変換する
 
     Args:
         x (torch.Tensor): shape (3 * k,) のテンソル
         k (int): グラデーションマップの基本色の数
 
     Returns:
-        np.ndarray: shape (k, 3) の RGB 配列
+        np.ndarray: shape (k, 3) の HLS 配列
     """
     arr = x.detach().cpu().numpy().reshape(k, 3)
     return np.clip(arr, 0.0, 1.0)
@@ -322,14 +322,14 @@ def fit_pref_model(X: torch.Tensor, comps: torch.Tensor, k: int) -> PairwiseGP:
 
 def canonicalize_x(x: torch.Tensor, k: int) -> torch.Tensor:
     """
-    HSL テンソルを明度順ソートし [0, 1] にクリップして正規化
+    HLS テンソルを明度順ソートし [0, 1] にクリップして正規化
 
     Args:
-        x (torch.Tensor): shape (3 * k,) の HSL テンソル
+        x (torch.Tensor): shape (3 * k,) の HLS テンソル
         k (int): パレットの色数
 
     Returns:
-        torch.Tensor: 正規化された HSL テンソル
+        torch.Tensor: 正規化された HLS テンソル
     """
     pal = x.detach().cpu().numpy().reshape(k, 3)
     pal = sort_by_lightness(np.clip(pal, 0.0, 1.0))
@@ -447,6 +447,35 @@ def get_next_pair(session_id: str):
     }
 
 
+def is_too_close(x: torch.Tensor, X: torch.Tensor, tol: float = 1e-4) -> bool:
+    if X.numel() == 0:
+        return False
+    d2 = ((X - x) ** 2).sum(dim=1)
+    return torch.any(d2 < tol ** 2).item()
+
+
+def make_distinct_candidate(
+    x: torch.Tensor,
+    X: torch.Tensor,
+    k: int,
+    max_tries: int = 5,
+    noise_scale: float = 1e-2,
+) -> torch.Tensor:
+    x = canonicalize_x(x, k)
+
+    if not is_too_close(x, X):
+        return x
+
+    for _ in range(max_tries):
+        y = x + noise_scale * torch.randn_like(x)
+        y = canonicalize_x(y, k)
+        if not is_too_close(y, X):
+            return y
+
+    dim = X.shape[1]
+    return canonicalize_x(torch.rand(dim, dtype=torch.double, device=X.device), k)
+
+
 @app.post("/palette/choice/")
 def record_choice(
     session_id: str = Form(...),
@@ -482,10 +511,15 @@ def record_choice(
                 incumbent=state.incumbent,
                 dim=state.X.shape[-1],
             )
-            challenger = make_distinct_candidate(challenger, state.X, state.k)
-        except Exception:
-            challenger = canonicalize_x(
+            challenger = make_distinct_candidate(
+                challenger,
+                state.X,
+                state.k,
+            )
+        except ModelFittingError:
+            challenger = make_distinct_candidate(
                 torch.rand(state.X.shape[-1], dtype=torch.double, device=state.X.device),
+                state.X,
                 state.k,
             )
 
