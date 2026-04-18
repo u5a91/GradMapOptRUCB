@@ -1,6 +1,7 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 import uvicorn
 import numpy as np
 from PIL import Image, UnidentifiedImageError
@@ -20,8 +21,12 @@ from botorch.models.transforms.input import Normalize
 from botorch.acquisition.preference import AnalyticExpectedUtilityOfBestOption
 from botorch.optim import optimize_acqf
 from gpytorch.kernels import ScaleKernel, RBFKernel, PeriodicKernel, AdditiveKernel
+from botorch.exceptions.errors import ModelFittingError
 
 SESSION_TTL_SECONDS = 30 * 60  # 30 minutes
+
+DEFAULT_N_ITER = 10
+DEFAULT_K = 5
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
 MAX_IMAGE_WIDTH = 4096
@@ -40,12 +45,18 @@ app.mount(
     StaticFiles(directory="static"),
     name="static",
 )
+templates = Jinja2Templates(directory="static")
 
-
-@app.get("/", include_in_schema=False)  # docs に表示しない
-async def root():
-    return FileResponse("static/index.html")
-
+@app.get("/", include_in_schema=False, response_class=HTMLResponse)
+async def root(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={
+            "default_n_iter": DEFAULT_N_ITER,
+            "default_k": DEFAULT_K,
+        },
+    )
 
 @dataclass
 class SessionState:
@@ -328,8 +339,8 @@ def canonicalize_x(x: torch.Tensor, k: int) -> torch.Tensor:
 @app.post("/upload/")
 async def upload_image(
     file: UploadFile = File(...),
-    n_iter_form: int = Form(20),
-    k_form: int = Form(5),
+    n_iter_form: int = Form(DEFAULT_N_ITER),
+    k_form: int = Form(DEFAULT_K),
 ):
     cleanup_expired_sessions()
     if not (1 <= n_iter_form <= 20):
@@ -464,14 +475,19 @@ def record_choice(
     state.curr_iteration += 1
 
     if state.curr_iteration <= state.n_iter:
-        model = fit_pref_model(state.X, state.comps, state.k)
-
-        challenger = propose_challenger_eubo(
-            model=model,
-            incumbent=state.incumbent,
-            dim=state.X.shape[-1],
-        )
-        challenger = canonicalize_x(challenger, state.k)
+        try:
+            model = fit_pref_model(state.X, state.comps, state.k)
+            challenger = propose_challenger_eubo(
+                model=model,
+                incumbent=state.incumbent,
+                dim=state.X.shape[-1],
+            )
+            challenger = make_distinct_candidate(challenger, state.X, state.k)
+        except Exception:
+            challenger = canonicalize_x(
+                torch.rand(state.X.shape[-1], dtype=torch.double, device=state.X.device),
+                state.k,
+            )
 
         next_pair = torch.stack([state.incumbent, challenger], dim=0)
 

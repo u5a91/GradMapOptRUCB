@@ -6,13 +6,16 @@
   <title>GradMapOpt</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
+<body
+  data-default-n-iter="{{ default_n_iter }}"
+  data-default-k="{{ default_k }}"
+>
   <h1>GradMapOpt</h1>
 
   <!-- Setup -->
   <div id="config">
-    <label>Iterations: <input type="number" id="inputIter" value="20" min="1"></label>
-    <label>Colors: <input type="number" id="inputK" value="5" min="2"></label>
+    <label>Iterations: <input type="number" id="inputIter" value="{{ default_n_iter }}" min="1"></label>
+    <label>Colors: <input type="number" id="inputK" value="{{ default_k }}" min="2"></label>
   </div>
 
   <!-- Upload -->
@@ -61,6 +64,8 @@
   <div id="status"></div>
 
 <script>
+  const DEFAULT_N_ITER = Number(document.body.dataset.defaultNIter);
+  const DEFAULT_K = Number(document.body.dataset.defaultK);
   // 画像未設定時に使う透明 GIF
   const EMPTY_IMG =
   "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
@@ -80,7 +85,7 @@
   const inputK          = document.getElementById('inputK');
 
   let sessionId = null;
-  let totalIterations = 20;
+  let totalIterations = DEFAULT_N_ITER;
 
   function resetImages() {
     imgA.src = EMPTY_IMG;
@@ -167,8 +172,8 @@
       console.warn('No file selected');
       return alert('画像を選んでください / No file selected');
     }
-    totalIterations = parseInt(inputIter.value, 10) || 20;
-    const k = parseInt(inputK.value, 10) || 5;
+    totalIterations = parseInt(inputIter.value, 10) || DEFAULT_N_ITER;
+    const k = parseInt(inputK.value, 10) || DEFAULT_K;
 
     const form = new FormData();
     form.append('file', file);
