@@ -17,8 +17,12 @@
 
   <!-- Upload -->
   <div id="uploadSection">
-    <input type="file" id="fileInput" accept="image/*">
-    <button id="uploadBtn">Upload Image</button>
+    <label id="fileInputButton" class="ui-btn">
+      Choose File
+      <input type="file" id="fileInput" accept="image/*">
+    </label>
+    <span id="fileInputLabel">No file selected</span>
+    <button id="uploadBtn" class="ui-btn">Upload Image</button>
   </div>
 
   <!-- Pair -->
@@ -51,8 +55,8 @@
 
   <!-- Choice -->
   <div id="controls">
-    <button id="chooseA" disabled>Choose A</button>
-    <button id="chooseB" disabled>Choose B</button>
+    <button id="chooseA" class="ui-btn" disabled>Choose A</button>
+    <button id="chooseB" class="ui-btn" disabled>Choose B</button>
   </div>
   <div id="status"></div>
 
@@ -60,19 +64,20 @@
   // 画像未設定時に使う透明 GIF
   const EMPTY_IMG =
   "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
-  const fileInput   = document.getElementById('fileInput');
-  const uploadBtn   = document.getElementById('uploadBtn');
-  const imgA        = document.getElementById('imgA');
-  const imgB        = document.getElementById('imgB');
-  const barA        = document.getElementById('barA');
-  const barB        = document.getElementById('barB');
-  const paletteA    = document.getElementById('paletteA');
-  const paletteB    = document.getElementById('paletteB');
-  const btnA        = document.getElementById('chooseA');
-  const btnB        = document.getElementById('chooseB');
-  const status      = document.getElementById('status');
-  const inputIter   = document.getElementById('inputIter');
-  const inputK      = document.getElementById('inputK');
+  const fileInput       = document.getElementById('fileInput');
+  const fileInputLabel  = document.getElementById('fileInputLabel');
+  const uploadBtn       = document.getElementById('uploadBtn');
+  const imgA            = document.getElementById('imgA');
+  const imgB            = document.getElementById('imgB');
+  const barA            = document.getElementById('barA');
+  const barB            = document.getElementById('barB');
+  const paletteA        = document.getElementById('paletteA');
+  const paletteB        = document.getElementById('paletteB');
+  const btnA            = document.getElementById('chooseA');
+  const btnB            = document.getElementById('chooseB');
+  const status          = document.getElementById('status');
+  const inputIter       = document.getElementById('inputIter');
+  const inputK          = document.getElementById('inputK');
 
   let sessionId = null;
   let totalIterations = 20;
@@ -111,8 +116,8 @@
       // Palette lists
       const palA = data.palA;
       const palB = data.palB;
-      paletteA.textContent = palA.map((c,i) => `color ${i+1} (HLS): ${formatHLS(c)}`).join('\n');
-      paletteB.textContent = palB.map((c,i) => `color ${i+1} (HLS): ${formatHLS(c)}`).join('\n');
+      paletteA.textContent = palA.map((c,i) => `color ${i+1} : ${formatHLS(c)}`).join('\n');
+      paletteB.textContent = palB.map((c,i) => `color ${i+1} : ${formatHLS(c)}`).join('\n');
       // Iteration info
       status.textContent = `Iteration ${data.iteration} / ${data.total_iterations}`;
       btnA.disabled = btnB.disabled = false;
@@ -191,6 +196,11 @@
   }
 
   resetImages();
+    fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    fileInputLabel.textContent = file ? file.name : 'No file selected';
+  });
+
   uploadBtn.addEventListener('click', uploadImage);
   btnA.addEventListener('click', () => sendChoice('A'));
   btnB.addEventListener('click', () => sendChoice('B'));

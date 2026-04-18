@@ -1,23 +1,20 @@
 /* style.css */
 
 :root {
-  /* background : lightgray */
-  --bg-color: #b1bcc6;
-
-  /* text : darkgray */
+  --bg-color: #ffffff;
   --text-color: #000f89;
-
-  /* others : ??? */
-  --accent-color: #555555;
+  --accent-color: #d8dcdf;
+  --border-color: #2c2e2f;
+  --muted-text-color: #aaaaaa;
 }
 
 body {
+  flex-direction: column;
   background-color: var(--bg-color);
   color: var(--text-color);
-  font-family: Arial, sans-serif;
+  font-family: Inconsolata, monospace;
   max-width: 640px;
   margin: 2rem auto;
-  align-items: center;   
 }
 
 #config,
@@ -59,12 +56,6 @@ body {
   margin-top: 1rem;
 }
 
-button {
-  padding: 0.5rem 1rem;
-  margin: 0 0.5rem;
-  font-size: 1rem;
-}
-
 #status {
   margin-top: 1rem;
 }
@@ -76,4 +67,57 @@ label {
 input[type=number] {
   width: 4rem;
   margin-right: 1rem;
+}
+
+#uploadSection {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.ui-btn {
+  background: var(--accent-color);
+  display: inline-block;
+  text-align: center;
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  height: 2.3em;
+  min-width: 7em;
+  line-height: 2.3em;
+  padding: 0 1rem;
+  margin: 0 0.5rem;
+  font-size: 1rem;
+  font-family: Inconsolata, monospace;
+  cursor: pointer;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.ui-btn:hover {
+  filter: brightness(1.05);
+}
+
+.ui-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#fileInputButton {
+  position: relative;
+  overflow: hidden;
+}
+
+#fileInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+#fileInputLabel {
+  color: var(--muted-text-color);
+  font-size: 0.9rem;
 }
