@@ -1,5 +1,7 @@
 # Gradient Mapping Optimization
 
+![](img/demo.gif)
+
 ユーザの二択のフィードバックをもとに, ベイズ最適化を用いてグラデーションマップを逐次的に最適化していく Web アプリです. BoTorch, FastAPI, Pillow, Numpy などを用いています.
 
 
